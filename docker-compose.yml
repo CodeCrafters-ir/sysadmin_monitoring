@@ -3,64 +3,36 @@ version: "3"
 services:
   influxdb:
     image: influxdb:latest
+    hostname: ${DOCKER_INFLUXDB_INIT_HOST}
     container_name: influxdb
-    volumes:
-      - influxdb-storage:/var/lib/influxdb2:rw
+    restart: on-failure
+    entrypoint: ["./config/entrypoint.sh"]
     env_file:
       - .env
-    entrypoint: ["./entrypoint.sh"]
-    restart: on-failure
     ports:
-      - ${DOCKER_INFLUXDB_INIT_PORT}:8086
+      - 8086:8086
     networks:
-      - sysadmin
+      - sysadmin_monitoring
+    volumes:
+      - influxdb-storage:/var/lib/influxdb2:rw
 
   telegraf:
     image: telegraf:latest
     container_name: telegraf
-    volumes:
-      - ${TELEGRAF_CFG_PATH}:/etc/telegraf/telegraf.conf:rw
     env_file:
       - .env
     depends_on:
       - influxdb
     networks:
-      - sysadmin
-
-  grafana:
-    image: grafana/grafana-oss:latest
-    container_name: grafana
+      - sysadmin_monitoring
     volumes:
-      - grafana-storage:/var/lib/grafana:rw
-    depends_on:
-      - influxdb
-    ports:
-      - ${GRAFANA_PORT}:3000
-    networks:
-      - sysadmin
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    container_name: node_exporter
-    command:
-      - '--path.rootfs=/host'
-    pid: host
-    restart: unless-stopped
-    volumes:
-      - '/:/host:ro,rslave'
-    ports:
-      - 9100:9100
-    networks:
-      - monitoring
-      - sysadmin
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:rw
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     expose:
@@ -68,26 +40,57 @@ services:
     ports:
       - 9090:9090
     networks:
-      - monitoring
-      - sysadmin
+      - prometheus_network
+      - sysadmin_monitoring
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    ports:
+      - 9100:9100
+    networks:
+      - prometheus_network
+      - sysadmin_monitoring
+    volumes:
+      - '/:/host:ro,rslave'
 
   cadvisor:
     image: google/cadvisor:latest
     container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
     devices:
       - /dev/kmsg
     restart: unless-stopped
     ports:
       - 8080:8080
     networks:
-      - monitoring
-      - sysadmin
+      - prometheus_network
+      - sysadmin_monitoring
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    depends_on:
+      - influxdb
+      - prometheus
+    ports:
+      - ${GRAFANA_PORT}:3000
+    networks:
+      - sysadmin_monitoring
+    volumes:
+      - grafana-storage:/var/lib/grafana:rw
 
 
 volumes:
@@ -95,8 +98,7 @@ volumes:
   influxdb-storage: {}
   prometheus_data: {}
 
-
 networks:
-  monitoring:
+  prometheus_network:
     driver: bridge
-  sysadmin:
+  sysadmin_monitoring:
