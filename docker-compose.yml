@@ -15,6 +15,7 @@ services:
       - sysadmin_monitoring
     volumes:
       - influxdb-storage:/var/lib/influxdb2:rw
+      - ./config/create_auth.sh:/docker-entrypoint-initdb.d/create_auth.sh
 
   telegraf:
     image: telegraf:latest
