@@ -4,7 +4,7 @@
 set -eu -o pipefail
 
 sleep 10
-
+echo '=================================================================='
 # Ensures environment variables are set
 export DOCKER_INFLUXDB_INIT_MODE=$DOCKER_INFLUXDB_INIT_MODE
 export DOCKER_INFLUXDB_INIT_USERNAME=$DOCKER_INFLUXDB_INIT_USERNAME
@@ -28,3 +28,7 @@ export BUCKET_ID=$bucket_id
 
 
 influx v1 auth create --username ${DOCKER_INFLUXDB_INIT_BUCKET} --password ${DOCKER_INFLUXDB_INIT_BUCKET} --read-bucket ${BUCKET_ID}
+
+
+
+

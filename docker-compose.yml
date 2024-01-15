@@ -6,7 +6,7 @@ services:
     hostname: ${DOCKER_INFLUXDB_INIT_HOST}
     container_name: influxdb
     restart: on-failure
-    entrypoint: ["./config/entrypoint.sh"]
+    entrypoint: ["./entrypoint.sh"]
     env_file:
       - .env
     ports:
@@ -16,6 +16,7 @@ services:
     volumes:
       - influxdb-storage:/var/lib/influxdb2:rw
       - ./config/create_auth.sh:/docker-entrypoint-initdb.d/create_auth.sh
+      - ./config/entrypoint.sh:/docker-entrypoint-initdb.d/entrypoint.sh
 
   telegraf:
     image: telegraf:latest
