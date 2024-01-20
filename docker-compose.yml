@@ -63,6 +63,25 @@ services:
     volumes:
       - '/:/host:ro,rslave'
 
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    networks:
+      - loki_network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/log:/var/log
+    networks:
+      - loki_network
+
   cadvisor:
     image: google/cadvisor:latest
     container_name: cadvisor
@@ -74,6 +93,7 @@ services:
     networks:
       - prometheus_network
       - sysadmin_monitoring
+      - loki_network
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -84,6 +104,8 @@ services:
   grafana:
     image: grafana/grafana-oss:latest
     container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
     depends_on:
       - influxdb
       - prometheus
@@ -102,5 +124,7 @@ volumes:
 
 networks:
   prometheus_network:
+    driver: bridge
+  loki_network:
     driver: bridge
   sysadmin_monitoring:
